@@ -42,6 +42,10 @@ public:
         return _bookingID;
     }
 
+    string getPassengerName() const {
+        return _passengerName;
+    }
+
     string getSeatNumber() const {
         return _seatNumber;
     }
@@ -108,6 +112,25 @@ public:
         }
         return "Ticket not found.";
     }
+
+    string viewTicketsInfoByUser(const string& username) const {
+        stringstream ticketsInfo;
+        int ticketsFound = 0;
+
+        for (const auto& ticketPair : _bookedTickets) {
+            if (ticketPair.second.getPassengerName() == username) {
+                ticketsInfo << ticketPair.second.getTicketInfo() << "\n\n";
+                ++ticketsFound;
+            }
+        }
+
+        if (ticketsFound == 0) {
+            return "No tickets found for user: " + username;
+        }
+
+        return ticketsInfo.str();
+    }
+
 
     int bookSeat(const string &seatNumber, const string &passengerName) {
         if (_seats.find(seatNumber) != _seats.end() && _seats[seatNumber].second) {
@@ -195,7 +218,7 @@ public:
             cin >> choice;
 
             if (cin.fail() || choice < 0 || choice > airplanes.size()) {
-                cin.clear(); // Clear error flags
+                cin.clear();
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');
                 cout << "Invalid input. Please enter a valid number." << endl;
                 continue;
@@ -226,6 +249,7 @@ public:
                     case 1: {
                         string seatNumber;
                         string passengerName;
+                        string waitinput;
                         cout << "Enter seat number: ";
                         cin >> seatNumber;
                         cout << "Enter Passenger Name: ";
@@ -236,10 +260,13 @@ public:
                         } else {
                             cout << "Failed to book the seat. It may be taken or does not exist." << endl;
                         }
+                        cout << "\nWrite anything to continue..." << endl;
+                        cin >> waitinput;
                         break;
                     }
                     case 2: {
                         int ticketID;
+                        string waitinput;
                         cout << "Enter ticket ID: ";
                         cin >> ticketID;
                         if (selectedAirplane.returnSeatByTicketID(ticketID)) {
@@ -247,22 +274,38 @@ public:
                         } else {
                             cout << "Could not cancel ticket. Please check the ticket ID." << endl;
                         }
+                        cout << "\nWrite anything to continue..." << endl;
+                        cin >> waitinput;
                         break;
                     }
                     case 3: {
+                        string waitinput;
                         selectedAirplane.displayAvailableSeats();
+
+                        cout << "\nWrite anything to continue..." << endl;
+                        cin >> waitinput;
                         break;
                     }
                     case 4: {
+                        string waitinput;
                         int ticketID;
                         cout << "Enter ticket ID: ";
                         cin >> ticketID;
                         cout << selectedAirplane.viewTicketInfo(ticketID) << endl;
+
+                        cout << "\nWrite anything to continue..." << endl;
+                        cin >> waitinput;
                         break;
                     }
                     case 5: {
-                        // This part of the code needs to be implemented based on how you want to track user info
-                        cout << "This feature is not implemented yet." << endl;
+                        string waitinput;
+                        string username;
+                        cout << "Enter username: ";
+                        cin >> username;
+                        cout << selectedAirplane.viewTicketsInfoByUser(username) << endl;
+
+                        cout << "\nWrite anything to continue..." << endl;
+                        cin >> waitinput;
                         break;
                     }
                     case 6: {
