@@ -4,62 +4,63 @@
 #include <utility>
 #include <vector>
 #include <sstream>
-#include "iostream"
+#include <fstream>
+#include <iostream>
 
 using namespace std;
 
 class Ticket {
 private:
-    static int _idCounter;
-    string _passengerName;
-    string _seatNumber;
-    string _flightNumber;
-    string _date;
-    int _price;
-    bool _bookingStatus;
-    int _bookingID;
+    static int id;
+    string passengerName;
+    string seatNumber;
+    string flightNumber;
+    string date;
+    int price;
+    bool bookingStatus;
+    int bookingID;
 
 public:
     Ticket(const string &passengerName, const string &seatNumber, const string &flightNumber, const string &date, int price)
-            : _passengerName(passengerName), _seatNumber(seatNumber), _flightNumber(flightNumber), _date(date), _price(price), _bookingStatus(true), _bookingID(++_idCounter) {}
+            : passengerName(passengerName), seatNumber(seatNumber), flightNumber(flightNumber), date(date), price(price), bookingStatus(true), bookingID(++id) {}
 
     string getTicketInfo() const {
-        if (_bookingStatus) {
-            return "Flight Number: " + _flightNumber + "\n" +
-                   "Date: " + _date + "\n" +
-                   "Seat: " + _seatNumber + "\n" +
-                   "Price: $" + to_string(_price);
+        if (bookingStatus) {
+            return "Flight Number: " + flightNumber + "\n" +
+                   "Date: " + date + "\n" +
+                   "Seat: " + seatNumber + "\n" +
+                   "Price: $" + to_string(price);
         } else {
-            return "Ticket ID: " + to_string(_bookingID) + " is cancelled.";
+            return "Ticket ID: " + to_string(bookingID) + " is cancelled.";
         }
     }
 
     void cancelBooking() {
-        _bookingStatus = false;
+        bookingStatus = false;
     }
 
     int getBookingID() const {
-        return _bookingID;
+        return bookingID;
     }
 
     string getPassengerName() const {
-        return _passengerName;
+        return passengerName;
     }
 
     string getSeatNumber() const {
-        return _seatNumber;
+        return seatNumber;
     }
 };
 
-int Ticket::_idCounter = 0;
+int Ticket::id = 0;
 
 
 class Airplane {
 private:
-    string _flightNumber;
-    string _date;
-    unordered_map<string, pair<int, bool>> _seats;
-    map<int, Ticket> _bookedTickets;
+    string flightNumber;
+    string date;
+    unordered_map<string, pair<int, bool>> seats;
+    map<int, Ticket> bookedTickets;
 
 public:
     Airplane(const string &flightInfo) {
@@ -78,8 +79,8 @@ public:
             return;
         }
 
-        _date = tokens[0];
-        _flightNumber = tokens[1];
+        date = tokens[0];
+        flightNumber = tokens[1];
 
         int seatsPerRow = stoi(tokens[2]);
 
@@ -95,7 +96,7 @@ public:
                 for (int row = startRow; row <= endRow; ++row) {
                     for (char seat = 'A'; seat < 'A' + seatsPerRow; ++seat) {
                         string seatID = to_string(row) + seat;
-                        _seats[seatID] = make_pair(price, true);
+                        seats[seatID] = make_pair(price, true);
                     }
                 }
             } else {
@@ -106,8 +107,8 @@ public:
     }
 
     string viewTicketInfo(int ticketID) const {
-        auto it = _bookedTickets.find(ticketID);
-        if (it != _bookedTickets.end()) {
+        auto it = bookedTickets.find(ticketID);
+        if (it != bookedTickets.end()) {
             return it->second.getTicketInfo();
         }
         return "Ticket not found.";
@@ -117,7 +118,7 @@ public:
         stringstream ticketsInfo;
         int ticketsFound = 0;
 
-        for (const auto& ticketPair : _bookedTickets) {
+        for (const auto& ticketPair : bookedTickets) {
             if (ticketPair.second.getPassengerName() == username) {
                 ticketsInfo << ticketPair.second.getTicketInfo() << "\n\n";
                 ++ticketsFound;
@@ -133,22 +134,22 @@ public:
 
 
     int bookSeat(const string &seatNumber, const string &passengerName) {
-        if (_seats.find(seatNumber) != _seats.end() && _seats[seatNumber].second) {
-            int price = _seats[seatNumber].first;
-            _seats[seatNumber].second = false;
-            Ticket ticket(passengerName, seatNumber, _flightNumber, _date, price);
-            _bookedTickets.insert(make_pair(ticket.getBookingID(), ticket));
+        if (seats.find(seatNumber) != seats.end() && seats[seatNumber].second) {
+            int price = seats[seatNumber].first;
+            seats[seatNumber].second = false;
+            Ticket ticket(passengerName, seatNumber, flightNumber, date, price);
+            bookedTickets.insert(make_pair(ticket.getBookingID(), ticket));
             return ticket.getBookingID();
         }
         return -1;
     }
 
     bool returnSeat(const string &seatNumber) {
-        auto it = _seats.find(seatNumber);
-        if (it != _seats.end() && !it->second.second) {
+        auto it = seats.find(seatNumber);
+        if (it != seats.end() && !it->second.second) {
             it->second.second = true;
 
-            for (auto &ticket : _bookedTickets) {
+            for (auto &ticket : bookedTickets) {
                 if (ticket.second.getSeatNumber() == seatNumber) {
                     ticket.second.cancelBooking();
                     break;
@@ -159,8 +160,8 @@ public:
         return false;
     }
     bool returnSeatByTicketID(int ticketID) {
-        auto ticketIt = _bookedTickets.find(ticketID);
-        if (ticketIt != _bookedTickets.end()) {
+        auto ticketIt = bookedTickets.find(ticketID);
+        if (ticketIt != bookedTickets.end()) {
             string seatNumber = ticketIt->second.getSeatNumber();
             ticketIt->second.cancelBooking();
             return this->returnSeat(seatNumber);
@@ -169,15 +170,15 @@ public:
     }
 
     void displayAvailableSeats() const {
-        cout << "Available seats for flight " << _flightNumber << " on " << _date << ":" << endl;
-        for (const auto& seat : _seats) {
+        cout << "Available seats for flight " << flightNumber << " on " << date << ":" << endl;
+        for (const auto& seat : seats) {
             if (seat.second.second) {
                 cout << "Seat " << seat.first << " - Price: $" << seat.second.first << endl;
             }
         }
     }
     string getFlightNumber() const {
-        return _flightNumber;
+        return flightNumber;
     }
 };
 
@@ -324,10 +325,22 @@ public:
 };
 
 int main() {
-    vector<string> configs = {
-            "11.12.2022 HJ114 2 1-10 10$ 11-20 20$",
-            "12.12.2022 HJ115 3 1-5 30$ 6-10 40$"
-    };
+    ifstream file("1.txt");
+    vector<string> configs;
+    string line;
+
+    if (file.is_open()) {
+        while (getline(file, line)) {
+            if (!line.empty()) {
+                configs.push_back(line);
+            }
+        }
+        file.close();
+    } else {
+        cerr << "Unable to open file";
+        return 1;
+    }
+
     Console console(configs);
     console.run();
     return 0;
