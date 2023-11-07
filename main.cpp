@@ -23,10 +23,6 @@ public:
     Ticket(const string &passengerName, const string &seatNumber, const string &flightNumber, const string &date, int price)
             : _passengerName(passengerName), _seatNumber(seatNumber), _flightNumber(flightNumber), _date(date), _price(price), _bookingStatus(true), _bookingID(++_idCounter) {}
 
-    static int getIdCounter() {
-        return _idCounter;
-    }
-
     string getTicketInfo() const {
         if (_bookingStatus) {
             return "Flight Number: " + _flightNumber + "\n" +
@@ -105,6 +101,14 @@ public:
         }
     }
 
+    string viewTicketInfo(int ticketID) const {
+        auto it = _bookedTickets.find(ticketID);
+        if (it != _bookedTickets.end()) {
+            return it->second.getTicketInfo();
+        }
+        return "Ticket not found.";
+    }
+
     int bookSeat(const string &seatNumber, const string &passengerName) {
         if (_seats.find(seatNumber) != _seats.end() && _seats[seatNumber].second) {
             int price = _seats[seatNumber].first;
@@ -114,14 +118,6 @@ public:
             return ticket.getBookingID();
         }
         return -1;
-    }
-
-    string viewTicketInfo(int ticketID) const {
-        auto it = _bookedTickets.find(ticketID);
-        if (it != _bookedTickets.end()) {
-            return it->second.getTicketInfo();
-        }
-        return "Ticket not found.";
     }
 
     bool returnSeat(const string &seatNumber) {
@@ -139,6 +135,15 @@ public:
         }
         return false;
     }
+    bool returnSeatByTicketID(int ticketID) {
+        auto ticketIt = _bookedTickets.find(ticketID);
+        if (ticketIt != _bookedTickets.end()) {
+            string seatNumber = ticketIt->second.getSeatNumber();
+            ticketIt->second.cancelBooking();
+            return this->returnSeat(seatNumber);
+        }
+        return false;
+    }
 
     void displayAvailableSeats() const {
         cout << "Available seats for flight " << _flightNumber << " on " << _date << ":" << endl;
@@ -148,23 +153,139 @@ public:
             }
         }
     }
+    string getFlightNumber() const {
+        return _flightNumber;
+    }
 };
 
-
-
-int main(){
-    string config = "11.12.2022 HJ114 2 1-10 10$ 11-20 20$";
-    Airplane airplane(config);
-    int bookingID = airplane.bookSeat("10A", "John Doe");
-    if (bookingID != -1) {
-        cout << "Booked with ID " << bookingID << endl;
-        cout << airplane.viewTicketInfo(bookingID) << endl;
+class Console {
+private:
+    vector<Airplane> airplanes;
+    static void DisplayAirplaneInterface() {
+        cout << "Type command:\n" << endl;
+        cout << "1. Book a seat" << endl;
+        cout << "2. Cancel a ticket" << endl;
+        cout << "3. Display available seats" << endl;
+        cout << "4. View booking info" << endl;
+        cout << "5. View user info" << endl;
+        cout << "6. Exit\n" << endl;
     }
-    airplane.displayAvailableSeats();
 
+    void DisplayFlightList() {
+        cout << "Select a flight to manage:" << endl;
+        for (size_t i = 0; i < airplanes.size(); ++i) {
+            cout << i + 1 << ". Flight " << airplanes[i].getFlightNumber() << endl;
+        }
+    }
+
+public:
+    Console(const vector<string>& configurations) {
+        for (const auto& config : configurations) {
+            airplanes.emplace_back(config);
+        }
+    }
+
+    void run() {
+        bool running = true;
+        while (running) {
+            system("clear");
+            DisplayFlightList();
+            int choice;
+            cout << "Enter the number of the flight to manage or 0 to exit: ";
+            cin >> choice;
+
+            if (cin.fail() || choice < 0 || choice > airplanes.size()) {
+                cin.clear(); // Clear error flags
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                cout << "Invalid input. Please enter a valid number." << endl;
+                continue;
+            }
+
+            if (choice == 0) {
+                running = false;
+                break;
+            }
+
+            Airplane& selectedAirplane = airplanes[choice - 1];
+            bool managingFlight = true;
+            while (managingFlight) {
+                system("clear");
+                DisplayAirplaneInterface();
+                int action;
+                cout << "Enter your choice: ";
+                cin >> action;
+
+                if (cin.fail()) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "Invalid input. Please enter a number." << endl;
+                    continue;
+                }
+
+                switch (action) {
+                    case 1: {
+                        string seatNumber;
+                        string passengerName;
+                        cout << "Enter seat number: ";
+                        cin >> seatNumber;
+                        cout << "Enter Passenger Name: ";
+                        cin >> passengerName;
+                        int ticketID = selectedAirplane.bookSeat(seatNumber, passengerName);
+                        if (ticketID != -1) {
+                            cout << "Seat booked successfully. Ticket ID: " << ticketID << endl;
+                        } else {
+                            cout << "Failed to book the seat. It may be taken or does not exist." << endl;
+                        }
+                        break;
+                    }
+                    case 2: {
+                        int ticketID;
+                        cout << "Enter ticket ID: ";
+                        cin >> ticketID;
+                        if (selectedAirplane.returnSeatByTicketID(ticketID)) {
+                            cout << "Ticket cancelled successfully." << endl;
+                        } else {
+                            cout << "Could not cancel ticket. Please check the ticket ID." << endl;
+                        }
+                        break;
+                    }
+                    case 3: {
+                        selectedAirplane.displayAvailableSeats();
+                        break;
+                    }
+                    case 4: {
+                        int ticketID;
+                        cout << "Enter ticket ID: ";
+                        cin >> ticketID;
+                        cout << selectedAirplane.viewTicketInfo(ticketID) << endl;
+                        break;
+                    }
+                    case 5: {
+                        // This part of the code needs to be implemented based on how you want to track user info
+                        cout << "This feature is not implemented yet." << endl;
+                        break;
+                    }
+                    case 6: {
+                        managingFlight = false;
+                        break;
+                    }
+                    default: {
+                        cout << "Invalid option. Please try again." << endl;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+};
+
+int main() {
+    vector<string> configs = {
+            "11.12.2022 HJ114 2 1-10 10$ 11-20 20$",
+            "12.12.2022 HJ115 3 1-5 30$ 6-10 40$"
+    };
+    Console console(configs);
+    console.run();
     return 0;
 }
-
-
-
-
