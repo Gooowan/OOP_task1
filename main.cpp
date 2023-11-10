@@ -21,8 +21,23 @@ private:
     int bookingID;
 
 public:
-    Ticket(const string &passengerName, const string &seatNumber, const string &flightNumber, const string &date, int price)
-            : passengerName(passengerName), seatNumber(seatNumber), flightNumber(flightNumber), date(date), price(price), bookingStatus(true), bookingID(++id) {}
+    Ticket(string passengerName, string seatNumber, string flightNumber, string date, int price)
+            : passengerName(std::move(passengerName)), seatNumber(std::move(seatNumber)),
+              flightNumber(std::move(flightNumber)), date(std::move(date)), price(price),
+              bookingStatus(true), bookingID(++id) {}
+
+    Ticket(const Ticket& other)
+            : passengerName(other.passengerName), seatNumber(other.seatNumber),
+              flightNumber(other.flightNumber), date(other.date), price(other.price),
+              bookingStatus(other.bookingStatus), bookingID(other.bookingID) {}
+
+    Ticket(Ticket&& other)
+            : passengerName(std::move(other.passengerName)), seatNumber(std::move(other.seatNumber)),
+              flightNumber(std::move(other.flightNumber)), date(std::move(other.date)), price(other.price),
+              bookingStatus(other.bookingStatus), bookingID(other.bookingID) {
+        other.bookingStatus = false;
+        other.bookingID = 0;
+    }
 
     string getTicketInfo() const {
         if (bookingStatus) {
@@ -63,7 +78,7 @@ private:
     map<int, Ticket> bookedTickets;
 
 public:
-    Airplane(const string &flightInfo) {
+    explicit Airplane(const string &flightInfo) {
         stringstream ss(flightInfo);
         string token;
         vector<string> tokens;
@@ -111,7 +126,9 @@ public:
         if (it != bookedTickets.end()) {
             return it->second.getTicketInfo();
         }
-        return "Ticket not found.";
+        else{
+            return "Ticket not found";
+        }
     }
 
     string viewTicketsInfoByUser(const string& username) const {
@@ -120,13 +137,13 @@ public:
 
         for (const auto& ticketPair : bookedTickets) {
             if (ticketPair.second.getPassengerName() == username) {
-                ticketsInfo << ticketPair.second.getTicketInfo() << "\n\n";
+                ticketsInfo << ticketPair.second.getTicketInfo() << "\n";
                 ++ticketsFound;
             }
         }
 
         if (ticketsFound == 0) {
-            return "No tickets found for user: " + username;
+            return "No tickets found for user";
         }
 
         return ticketsInfo.str();
@@ -185,21 +202,39 @@ public:
 class Console {
 private:
     vector<Airplane> airplanes;
-    static void DisplayAirplaneInterface() {
-        cout << "Type command:\n" << endl;
+
+    static void DisplayMainMenu() {
+        cout << "Available commands:\n" << endl;
         cout << "1. Book a seat" << endl;
-        cout << "2. Cancel a ticket" << endl;
-        cout << "3. Display available seats" << endl;
-        cout << "4. View booking info" << endl;
-        cout << "5. View user info" << endl;
+        cout << "2. Return a ticket" << endl;
+        cout << "3. View all available seats" << endl;
+        cout << "4. View ticket by ID" << endl;
+        cout << "5. View all tickets by username" << endl;
         cout << "6. Exit\n" << endl;
     }
 
     void DisplayFlightList() {
-        cout << "Select a flight to manage:" << endl;
+        cout << "Available flights:" << endl;
         for (size_t i = 0; i < airplanes.size(); ++i) {
             cout << i + 1 << ". Flight " << airplanes[i].getFlightNumber() << endl;
         }
+        cout << endl;
+    }
+
+    int GetFlightIndexFromUser() {
+        int flightIndex;
+        cout << "Enter the flight number: ";
+        cin >> flightIndex;
+        flightIndex--;
+
+        if (cin.fail() || flightIndex < 0 || flightIndex >= airplanes.size()) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Invalid flight number. Please try again." << endl;
+            return -1;
+        }
+
+        return flightIndex;
     }
 
 public:
@@ -210,119 +245,109 @@ public:
     }
 
     void run() {
-        bool running = true;
-        while (running) {
+        while (true) {
             system("clear");
-            DisplayFlightList();
-            int choice;
-            cout << "Enter the number of the flight to manage or 0 to exit: ";
-            cin >> choice;
+            DisplayMainMenu();
 
-            if (cin.fail() || choice < 0 || choice > airplanes.size()) {
+            int command;
+            cout << "Enter your command: ";
+            cin >> command;
+
+            if (cin.fail() || command < 1 || command > 6) {
                 cin.clear();
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                cout << "Invalid input. Please enter a valid number." << endl;
+                cout << "Invalid command. Please enter a number between 1 and 6." << endl;
                 continue;
             }
 
-            if (choice == 0) {
-                running = false;
+            if (command == 6) {
                 break;
             }
 
-            Airplane& selectedAirplane = airplanes[choice - 1];
-            bool managingFlight = true;
-            while (managingFlight) {
-                system("clear");
-                DisplayAirplaneInterface();
-                int action;
-                cout << "Enter your choice: ";
-                cin >> action;
+            string seatNumber, passengerName, username;
+            int ticketID;
 
-                if (cin.fail()) {
-                    cin.clear();
-                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                    cout << "Invalid input. Please enter a number." << endl;
-                    continue;
+            switch (command) {
+                case 1:{
+                    DisplayFlightList();
+                    int flightIndex = GetFlightIndexFromUser();
+                    if (flightIndex == -1) continue;
+                    Airplane& selectedAirplane = airplanes[flightIndex];
+
+                    cout << "Enter seat number: ";
+                    cin >> seatNumber;
+                    cout << "Enter passenger name: ";
+                    cin >> passengerName;
+                    ticketID = selectedAirplane.bookSeat(seatNumber, passengerName);
+                    if (ticketID != -1) {
+                        cout << "Seat booked successfully. Ticket ID: " << ticketID << endl;
+                    } else {
+                        cout << "Failed to book the seat. It may be taken or does not exist." << endl;
+                    }
+                    break;
                 }
 
-                switch (action) {
-                    case 1: {
-                        string seatNumber;
-                        string passengerName;
-                        string waitinput;
-                        cout << "Enter seat number: ";
-                        cin >> seatNumber;
-                        cout << "Enter Passenger Name: ";
-                        cin >> passengerName;
-                        int ticketID = selectedAirplane.bookSeat(seatNumber, passengerName);
-                        if (ticketID != -1) {
-                            cout << "Seat booked successfully. Ticket ID: " << ticketID << endl;
-                        } else {
-                            cout << "Failed to book the seat. It may be taken or does not exist." << endl;
-                        }
-                        cout << "\nWrite anything to continue..." << endl;
-                        cin >> waitinput;
-                        break;
-                    }
-                    case 2: {
-                        int ticketID;
-                        string waitinput;
-                        cout << "Enter ticket ID: ";
-                        cin >> ticketID;
+                case 2:{
+                    DisplayFlightList();
+                    cout << "Enter ticket ID: ";
+                    cin >> ticketID;
+                    for (size_t i = 0; i < airplanes.size(); ++i) {
+                        Airplane& selectedAirplane = airplanes[i];
                         if (selectedAirplane.returnSeatByTicketID(ticketID)) {
-                            cout << "Ticket cancelled successfully." << endl;
+                            cout << "Ticket returned successfully." << endl;
                         } else {
-                            cout << "Could not cancel ticket. Please check the ticket ID." << endl;
+                            cout << "Failed to return the ticket. It may not exist or has already been returned." << endl;
                         }
-                        cout << "\nWrite anything to continue..." << endl;
-                        cin >> waitinput;
-                        break;
                     }
-                    case 3: {
-                        string waitinput;
-                        selectedAirplane.displayAvailableSeats();
-
-                        cout << "\nWrite anything to continue..." << endl;
-                        cin >> waitinput;
-                        break;
-                    }
-                    case 4: {
-                        string waitinput;
-                        int ticketID;
-                        cout << "Enter ticket ID: ";
-                        cin >> ticketID;
-                        cout << selectedAirplane.viewTicketInfo(ticketID) << endl;
-
-                        cout << "\nWrite anything to continue..." << endl;
-                        cin >> waitinput;
-                        break;
-                    }
-                    case 5: {
-                        string waitinput;
-                        string username;
-                        cout << "Enter username: ";
-                        cin >> username;
-                        cout << selectedAirplane.viewTicketsInfoByUser(username) << endl;
-
-                        cout << "\nWrite anything to continue..." << endl;
-                        cin >> waitinput;
-                        break;
-                    }
-                    case 6: {
-                        managingFlight = false;
-                        break;
-                    }
-                    default: {
-                        cout << "Invalid option. Please try again." << endl;
-                        break;
-                    }
+                    break;
                 }
+
+                case 3: {
+                    DisplayFlightList();
+                    int flightIndex = GetFlightIndexFromUser();
+                    if (flightIndex == -1) continue;
+                    Airplane& selectedAirplane = airplanes[flightIndex];
+                    selectedAirplane.displayAvailableSeats();
+                    break;
+                }
+
+                case 4:
+                    cout << "Enter ticket ID: ";
+                    cin >> ticketID;
+
+                    for (size_t i = 0; i < airplanes.size(); ++i) {
+                        Airplane& selectedAirplane = airplanes[i];
+                        string ticketInfo = selectedAirplane.viewTicketInfo(ticketID);
+                        if (ticketInfo != "Ticket not found") {
+                            cout << ticketInfo << endl;
+                        }
+                    }
+                    break;
+
+                case 5:
+                    cout << "Enter username: ";
+                    cin >> username;
+
+                    for (size_t i = 0; i < airplanes.size(); ++i) {
+                        Airplane& selectedAirplane = airplanes[i];
+                        string ticketInfo = selectedAirplane.viewTicketsInfoByUser(username);
+                        if (ticketInfo != "No tickets found for user") {
+                            cout << ticketInfo << endl;
+                        }
+                    }
+                    break;
+
+                default:
+                    cout << "Invalid command. Please try again." << endl;
+                    break;
             }
+            cout << "\nPress any key to continue..." << endl;
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cin.get();
         }
     }
-
 };
+
 
 int main() {
     ifstream file("1.txt");
